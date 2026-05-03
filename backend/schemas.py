@@ -1,16 +1,20 @@
-from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, List
+from typing import List, Optional
+
+from pydantic import BaseModel, EmailStr, Field
+
 
 # User schemas
 class UserCreate(BaseModel):
-    username: str
-    email: str
-    password: str
+    username: str = Field(..., min_length=3, max_length=30)
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+
 
 class UserLogin(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., min_length=3, max_length=30)
+    password: str = Field(..., min_length=8)
+
 
 class UserOut(BaseModel):
     id: int
@@ -21,38 +25,47 @@ class UserOut(BaseModel):
     class Config:
         from_attributes = True
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
 
+
 # Set schemas
 class SetCreate(BaseModel):
-    reps: int
-    weight: float
-    set_number: int
+    reps: int = Field(..., ge=1, le=100)
+    weight: float = Field(..., ge=0)
+    set_number: int = Field(..., ge=1)
+
 
 class SetOut(SetCreate):
     id: int
+
     class Config:
         from_attributes = True
 
+
 # Exercise schemas
 class ExerciseCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=100)
     sets: List[SetCreate] = []
+
 
 class ExerciseOut(BaseModel):
     id: int
     name: str
     sets: List[SetOut] = []
+
     class Config:
         from_attributes = True
 
+
 # Workout schemas
 class WorkoutCreate(BaseModel):
-    name: Optional[str] = "Workout"
-    notes: Optional[str] = None
+    name: Optional[str] = Field(default="Workout", min_length=1, max_length=100)
+    notes: Optional[str] = Field(default=None, max_length=1000)
     exercises: List[ExerciseCreate] = []
+
 
 class WorkoutOut(BaseModel):
     id: int
@@ -60,46 +73,57 @@ class WorkoutOut(BaseModel):
     date: datetime
     notes: Optional[str]
     exercises: List[ExerciseOut] = []
+
     class Config:
         from_attributes = True
 
+
 # Template schemas
 class TemplateExerciseCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=100)
+
 
 class TemplateExerciseOut(BaseModel):
     id: int
     name: str
+
     class Config:
         from_attributes = True
 
+
 class TemplateCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=100)
     exercises: List[TemplateExerciseCreate] = []
+
 
 class TemplateOut(BaseModel):
     id: int
     name: str
     exercises: List[TemplateExerciseOut] = []
+
     class Config:
         from_attributes = True
 
+
 # Bodyweight schemas
 class BodyweightCreate(BaseModel):
-    weight: float
+    weight: float = Field(..., gt=0, le=1000)
     date: Optional[datetime] = None
+
 
 class BodyweightOut(BaseModel):
     id: int
     weight: float
     date: datetime
+
     class Config:
         from_attributes = True
 
+
 # Progress photo schemas
 class ProgressPhotoCreate(BaseModel):
-    photo_url: str
-    notes: Optional[str] = None
+    photo_url: str = Field(..., min_length=1, max_length=1000)
+    notes: Optional[str] = Field(default=None, max_length=1000)
 
 
 class ProgressPhotoOut(BaseModel):
