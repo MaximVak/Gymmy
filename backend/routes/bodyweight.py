@@ -5,7 +5,7 @@ from typing import List
 import models, schemas, auth
 import datetime
 
-router = APIRouter()
+router = APIRouter(prefix="/bodyweight", tags=["bodyweight"])
 
 @router.post("/", response_model=schemas.BodyweightOut)
 def log_bodyweight(

@@ -4,7 +4,7 @@ from database import get_db
 from typing import List
 import models, schemas, auth
 
-router = APIRouter()
+router = APIRouter(prefix="/templates", tags=["templates"])
 
 @router.post("/", response_model=schemas.TemplateOut)
 def create_template(
