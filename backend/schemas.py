@@ -97,10 +97,16 @@ class BodyweightOut(BaseModel):
         from_attributes = True
 
 # Progress photo schemas
+class ProgressPhotoCreate(BaseModel):
+    photo_url: str
+    notes: Optional[str] = None
+
+
 class ProgressPhotoOut(BaseModel):
     id: int
     photo_url: str
     date: datetime
-    notes: Optional[str]
+    notes: Optional[str] = None
+
     class Config:
         from_attributes = True
