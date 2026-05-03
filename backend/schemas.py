@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 # User schemas
@@ -22,8 +22,7 @@ class UserOut(BaseModel):
     email: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Token(BaseModel):
@@ -41,8 +40,7 @@ class SetCreate(BaseModel):
 class SetOut(SetCreate):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Exercise schemas
@@ -56,8 +54,7 @@ class ExerciseOut(BaseModel):
     name: str
     sets: List[SetOut] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Workout schemas
@@ -74,8 +71,7 @@ class WorkoutOut(BaseModel):
     notes: Optional[str]
     exercises: List[ExerciseOut] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Template schemas
@@ -87,8 +83,7 @@ class TemplateExerciseOut(BaseModel):
     id: int
     name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TemplateCreate(BaseModel):
@@ -101,8 +96,7 @@ class TemplateOut(BaseModel):
     name: str
     exercises: List[TemplateExerciseOut] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Bodyweight schemas
@@ -116,8 +110,7 @@ class BodyweightOut(BaseModel):
     weight: float
     date: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Progress photo schemas
@@ -132,5 +125,4 @@ class ProgressPhotoOut(BaseModel):
     date: datetime
     notes: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

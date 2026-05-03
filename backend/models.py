@@ -1,9 +1,13 @@
-import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from database import Base
+
+
+def utc_now():
+    return datetime.now(timezone.utc)
 
 
 class User(Base):
@@ -13,7 +17,7 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     workouts = relationship(
         "Workout",
@@ -42,7 +46,7 @@ class Workout(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, default="Workout")
-    date = Column(DateTime, default=datetime.datetime.utcnow)
+    date = Column(DateTime, default=utc_now)
     notes = Column(Text, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
 
@@ -111,7 +115,7 @@ class BodyweightLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     weight = Column(Float)
-    date = Column(DateTime, default=datetime.datetime.utcnow)
+    date = Column(DateTime, default=utc_now)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
 
     owner = relationship("User", back_populates="bodyweight_logs")
@@ -122,7 +126,7 @@ class ProgressPhoto(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     photo_url = Column(String)
-    date = Column(DateTime, default=datetime.datetime.utcnow)
+    date = Column(DateTime, default=utc_now)
     notes = Column(Text, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
 
