@@ -2,7 +2,7 @@
 
 Gymmy is a full-stack fitness tracking app for logging workouts, tracking bodyweight, storing progress photos, estimating PRs, and preparing for AI-assisted coaching recommendations.
 
-The backend MVP is built with FastAPI, SQLAlchemy, SQLite, Pydantic, JWT authentication, and pytest. The React frontend is planned next.
+The backend MVP is built with FastAPI, SQLAlchemy, SQLite, Pydantic, JWT authentication, and pytest. The frontend MVP is built with Vite and React.
 
 ## Current Backend Features
 
@@ -39,8 +39,6 @@ The backend MVP is built with FastAPI, SQLAlchemy, SQLite, Pydantic, JWT authent
 - JavaScript
 - CSS
 
-The frontend folder is currently reserved for the upcoming React MVP.
-
 ## Project Structure
 
 ```text
@@ -68,6 +66,15 @@ Gymmy/
     uploads/
       progress_photos/
   frontend/
+    index.html
+    package.json
+    vite.config.js
+    .env.example
+    src/
+      App.jsx
+      api.js
+      main.jsx
+      styles.css
   README.md
 ```
 
@@ -192,6 +199,58 @@ Current backend result:
 ```
 
 Tests use `sqlite:///./test_gymmy.db` and reset the database between tests.
+
+## Frontend Setup
+
+From the repo root, move into the frontend folder:
+
+```bash
+cd frontend
+```
+
+Install frontend dependencies:
+
+```bash
+npm install
+```
+
+Create your local frontend environment file:
+
+```bash
+cp .env.example .env
+```
+
+Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Default frontend environment:
+
+```env
+VITE_API_URL=http://127.0.0.1:8000
+```
+
+Start the Vite development server:
+
+```bash
+npm run dev
+```
+
+The frontend will run at:
+
+```text
+http://127.0.0.1:5173
+```
+
+The FastAPI backend should be running at `http://127.0.0.1:8000`.
+
+Build the frontend:
+
+```bash
+npm run build
+```
 
 ## API Overview
 
