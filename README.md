@@ -324,7 +324,9 @@ Coach behavior:
 - Requires `OPENAI_API_KEY` in `backend/.env`
 - Uses `OPENAI_MODEL`, defaulting to `gpt-5-mini`
 - Sends a structured training summary to OpenAI
-- Returns one short direct answer to the user's training question
+- Answers personal training questions with Gymmy data when relevant
+- Answers general lifting questions directly from training principles
+- Returns one short direct answer
 - Tests mock the OpenAI call so the test suite does not spend credits
 
 ## Status

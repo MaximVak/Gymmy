@@ -108,3 +108,36 @@ def test_coach_returns_clear_error_without_openai_key(monkeypatch):
 
     assert response.status_code == 503
     assert response.json()["detail"] == "OPENAI_API_KEY is not configured"
+
+
+def test_coach_accepts_general_lifting_questions(monkeypatch):
+    captured = {}
+
+    def mock_generate_coaching_response(summary):
+        captured["summary"] = summary
+        return {
+            "direct_answer": "Both can grow your chest; barbell bench is better for heavy loading, while dumbbell press gives more range of motion.",
+            "disclaimer": "Training guidance only, not medical advice.",
+            "model": "mock-coach",
+        }
+
+    monkeypatch.setattr(
+        coach_routes,
+        "generate_coaching_response",
+        mock_generate_coaching_response,
+    )
+
+    headers = signup_and_login()
+    question = "What's better for chest growth, dumbbell press or barbell bench?"
+
+    response = client.post(
+        "/coach/",
+        headers=headers,
+        json={"focus": question},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "barbell bench" in data["direct_answer"]
+    assert captured["summary"]["focus"] == question

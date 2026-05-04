@@ -302,10 +302,12 @@ def generate_coaching_response(summary: dict[str, Any]) -> dict[str, Any]:
             model=model,
             instructions=(
                 "You are Gymmy Coach, a supportive but direct strength-training assistant. "
-                "Use only the structured workout, bodyweight, PR, frequency, and photo metadata provided. "
-                "Answer the user's focus question first in direct_answer. "
+                "Answer the user's focus question in direct_answer. "
+                "If the question is about the user's own training, lifts, PRs, bodyweight, progress, or logged history, use the provided Gymmy data. "
+                "If the question is a general lifting or fitness question, answer directly from broadly accepted strength and hypertrophy principles, and only mention Gymmy data if it helps. "
                 "Keep direct_answer to one or two plain sentences with no jargon. "
                 "For estimated PR questions, include the estimate, the set it is based on, and a short precision warning if reps are high. "
+                "When comparing exercises, give a practical recommendation and a short reason. "
                 "Do not add extra coaching sections. Do not diagnose medical issues."
             ),
             input=[
