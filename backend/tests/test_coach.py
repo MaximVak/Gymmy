@@ -34,10 +34,7 @@ def test_coach_builds_summary_and_returns_mocked_advice(monkeypatch):
     def mock_generate_coaching_response(summary):
         captured["summary"] = summary
         return {
-            "next_session_suggestions": ["Bench with steady volume."],
-            "progression_advice": ["Add small weight jumps when reps are clean."],
-            "recovery_flags": ["No major recovery flags."],
-            "pr_estimate_context": ["Bench estimate is based on 185 lb x 5."],
+            "direct_answer": "Your current best estimated 1RM is 215.8 lb, based on 185 lb x 5.",
             "disclaimer": "Training guidance only, not medical advice.",
             "model": "mock-coach",
         }
@@ -92,7 +89,7 @@ def test_coach_builds_summary_and_returns_mocked_advice(monkeypatch):
     summary = data["summary"]
 
     assert data["model"] == "mock-coach"
-    assert data["next_session_suggestions"] == ["Bench with steady volume."]
+    assert data["direct_answer"] == "Your current best estimated 1RM is 215.8 lb, based on 185 lb x 5."
     assert summary["focus"] == "Bench progression"
     assert summary["user"]["username"] == "coach_user"
     assert summary["recent_workouts"][0]["name"] == "Push Day"

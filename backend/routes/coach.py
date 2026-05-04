@@ -19,29 +19,11 @@ COACH_RESPONSE_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "next_session_suggestions": {
-            "type": "array",
-            "items": {"type": "string"},
-        },
-        "progression_advice": {
-            "type": "array",
-            "items": {"type": "string"},
-        },
-        "recovery_flags": {
-            "type": "array",
-            "items": {"type": "string"},
-        },
-        "pr_estimate_context": {
-            "type": "array",
-            "items": {"type": "string"},
-        },
+        "direct_answer": {"type": "string"},
         "disclaimer": {"type": "string"},
     },
     "required": [
-        "next_session_suggestions",
-        "progression_advice",
-        "recovery_flags",
-        "pr_estimate_context",
+        "direct_answer",
         "disclaimer",
     ],
 }
@@ -321,7 +303,10 @@ def generate_coaching_response(summary: dict[str, Any]) -> dict[str, Any]:
             instructions=(
                 "You are Gymmy Coach, a supportive but direct strength-training assistant. "
                 "Use only the structured workout, bodyweight, PR, frequency, and photo metadata provided. "
-                "Do not diagnose medical issues. Keep advice practical, concise, and suitable for the next week of training."
+                "Answer the user's focus question first in direct_answer. "
+                "Keep direct_answer to one or two plain sentences with no jargon. "
+                "For estimated PR questions, include the estimate, the set it is based on, and a short precision warning if reps are high. "
+                "Do not add extra coaching sections. Do not diagnose medical issues."
             ),
             input=[
                 {

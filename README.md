@@ -324,7 +324,7 @@ Coach behavior:
 - Requires `OPENAI_API_KEY` in `backend/.env`
 - Uses `OPENAI_MODEL`, defaulting to `gpt-5-mini`
 - Sends a structured training summary to OpenAI
-- Returns next-session suggestions, progression advice, recovery flags, and PR context
+- Returns one short direct answer to the user's training question
 - Tests mock the OpenAI call so the test suite does not spend credits
 
 ## Status

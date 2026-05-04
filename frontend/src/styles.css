@@ -734,28 +734,17 @@ textarea:focus {
   gap: 4px;
 }
 
-.coach-output-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+.direct-answer-panel,
+.coach-disclaimer {
   margin-top: 16px;
 }
 
-.coach-list {
-  display: grid;
-  gap: 10px;
+.direct-answer-panel p {
   margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.coach-list li {
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #f8fafc;
-  padding: 11px 12px;
   color: var(--ink);
-  line-height: 1.45;
+  font-size: 1.06rem;
+  font-weight: 750;
+  line-height: 1.5;
 }
 
 .summary-grid {
@@ -789,7 +778,6 @@ textarea:focus {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  margin-top: 16px;
   color: var(--muted);
   font-size: 0.9rem;
 }
@@ -804,7 +792,6 @@ textarea:focus {
   .two-column.wide-left,
   .history-layout,
   .coach-layout,
-  .coach-output-grid,
   .form-grid.two {
     grid-template-columns: 1fr;
   }

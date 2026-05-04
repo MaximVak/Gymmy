@@ -135,9 +135,6 @@ class CoachRequest(BaseModel):
 
 class CoachOut(BaseModel):
     summary: dict[str, Any]
-    next_session_suggestions: List[str]
-    progression_advice: List[str]
-    recovery_flags: List[str]
-    pr_estimate_context: List[str]
+    direct_answer: str
     disclaimer: str
     model: str

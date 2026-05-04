@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
-  AlertTriangle,
   Brain,
   Camera,
   ClipboardList,
@@ -18,7 +17,6 @@ import {
   Save,
   Scale,
   ShieldCheck,
-  Target,
   Trash2,
 } from "lucide-react";
 
@@ -517,28 +515,6 @@ function Dashboard({ token, navigate }) {
   );
 }
 
-function AdviceList({ icon: Icon, title, items }) {
-  return (
-    <section className="panel">
-      <div className="panel-heading">
-        <h2>
-          <Icon size={18} />
-          {title}
-        </h2>
-      </div>
-      {items.length === 0 ? (
-        <EmptyState icon={Icon} title="No advice returned" />
-      ) : (
-        <ul className="coach-list">
-          {items.map((item, index) => (
-            <li key={`${title}-${index}`}>{item}</li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
 function CoachPage({ token }) {
   const [focus, setFocus] = useState("");
   const [advice, setAdvice] = useState(null);
@@ -577,7 +553,7 @@ function CoachPage({ token }) {
           <div className="panel-heading">
             <h2>
               <Brain size={18} />
-              Generate guidance
+              Ask a question
             </h2>
           </div>
           <form className="form-stack" onSubmit={requestAdvice}>
@@ -585,13 +561,13 @@ function CoachPage({ token }) {
               Focus
               <textarea
                 onChange={(event) => setFocus(event.target.value)}
-                placeholder="Optional: bench progression, recovery, next lower-body session"
+                placeholder="What is my estimated PR based on Bench Press?"
                 value={focus}
               />
             </label>
             <button className="primary-button" disabled={isSubmitting} type="submit">
               {isSubmitting ? <Loader2 className="spin" size={18} /> : <Brain size={18} />}
-              Generate advice
+              Ask coach
             </button>
           </form>
           <Notice type="error">{error}</Notice>
@@ -632,28 +608,15 @@ function CoachPage({ token }) {
 
       {advice && (
         <>
-          <div className="coach-output-grid">
-            <AdviceList
-              icon={Dumbbell}
-              items={advice.next_session_suggestions}
-              title="Next session"
-            />
-            <AdviceList
-              icon={Target}
-              items={advice.progression_advice}
-              title="Progression"
-            />
-            <AdviceList
-              icon={AlertTriangle}
-              items={advice.recovery_flags}
-              title="Recovery flags"
-            />
-            <AdviceList
-              icon={LineChart}
-              items={advice.pr_estimate_context}
-              title="PR context"
-            />
-          </div>
+          <section className="panel direct-answer-panel">
+            <div className="panel-heading">
+              <h2>
+                <Brain size={18} />
+                Answer
+              </h2>
+            </div>
+            <p>{advice.direct_answer}</p>
+          </section>
 
           <section className="panel coach-disclaimer">
             <span>{advice.disclaimer}</span>
