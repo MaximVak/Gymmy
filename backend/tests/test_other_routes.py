@@ -141,6 +141,72 @@ def test_create_and_get_progress_photos():
     assert photos[0]["photo_url"] == "https://example.com/photo.jpg"
 
 
+def test_upload_progress_photo():
+    headers = signup_and_login()
+    image_content = b"\x89PNG\r\n\x1a\n" + b"progress-photo"
+
+    response = client.post(
+        "/progress-photos/upload",
+        headers=headers,
+        files={
+            "file": ("progress.png", image_content, "image/png"),
+        },
+        data={
+            "notes": "Uploaded progress",
+        },
+    )
+
+    assert response.status_code == 200
+
+    uploaded = response.json()
+    assert uploaded["photo_url"].startswith("/uploads/progress_photos/")
+    assert uploaded["photo_url"].endswith(".png")
+    assert uploaded["notes"] == "Uploaded progress"
+    assert "date" in uploaded
+
+    image_response = client.get(uploaded["photo_url"])
+    assert image_response.status_code == 200
+    assert image_response.content == image_content
+
+
+def test_upload_progress_photo_rejects_invalid_file_type():
+    headers = signup_and_login()
+
+    response = client.post(
+        "/progress-photos/upload",
+        headers=headers,
+        files={
+            "file": ("not-a-photo.txt", b"not an image", "text/plain"),
+        },
+    )
+
+    assert response.status_code == 400
+
+
+def test_uploaded_progress_photo_appears_in_progress_photo_list():
+    headers = signup_and_login()
+    image_content = b"\xff\xd8\xff" + b"progress-photo"
+
+    upload_response = client.post(
+        "/progress-photos/upload",
+        headers=headers,
+        files={
+            "file": ("progress.jpg", image_content, "image/jpeg"),
+        },
+    )
+
+    assert upload_response.status_code == 200
+
+    uploaded = upload_response.json()
+    get_response = client.get("/progress-photos/", headers=headers)
+
+    assert get_response.status_code == 200
+
+    photos = get_response.json()
+    assert len(photos) == 1
+    assert photos[0]["photo_url"] == uploaded["photo_url"]
+
+
 def test_progress_photo_validation_error():
     headers = signup_and_login()
 

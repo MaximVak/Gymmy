@@ -11,6 +11,9 @@ venv/
 *.sqlite
 *.sqlite3
 
+# Uploaded media
+backend/uploads/
+
 # Node / React
 node_modules/
 dist/
