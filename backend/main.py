@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 import models
 from database import engine
-from routes import bodyweight, progress_photos, templates, users, workouts
+from routes import bodyweight, coach, progress_photos, templates, users, workouts
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -48,3 +48,4 @@ app.include_router(workouts.router)
 app.include_router(templates.router)
 app.include_router(bodyweight.router)
 app.include_router(progress_photos.router)
+app.include_router(coach.router)

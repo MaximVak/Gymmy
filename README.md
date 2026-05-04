@@ -15,6 +15,7 @@ The backend MVP is built with FastAPI, SQLAlchemy, SQLite, Pydantic, JWT authent
 - Bodyweight tracking
 - Progress photo tracking with URL-only entries
 - Real progress photo uploads for JPEG, PNG, and WEBP files
+- AI coaching endpoint using structured workout data
 - Uploaded image serving from `/uploads`
 - Cascade deletes for user-owned records
 - Pydantic validation for API payloads
@@ -139,9 +140,11 @@ Then update `.env` as needed:
 SECRET_KEY=change-me
 DATABASE_URL=sqlite:///./gymmy.db
 ACCESS_TOKEN_EXPIRE_MINUTES=10080
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5-mini
 ```
 
-For local development, the default SQLite database is enough.
+For local development, the default SQLite database is enough. The coaching endpoint works after `OPENAI_API_KEY` is set.
 
 ## Run The API
 
@@ -195,7 +198,7 @@ venv\Scripts\python.exe -m pytest
 Current backend result:
 
 ```text
-17 passed
+19 passed
 ```
 
 Tests use `sqlite:///./test_gymmy.db` and reset the database between tests.
@@ -310,6 +313,20 @@ Upload behavior:
 - Returns a `photo_url` such as `/uploads/progress_photos/example-file.jpg`
 - Rejects non-image files and unsupported image types
 
+### Coach
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `POST` | `/coach/` | Generate AI coaching advice from workout, PR, bodyweight, training frequency, and progress-photo metadata |
+
+Coach behavior:
+
+- Requires `OPENAI_API_KEY` in `backend/.env`
+- Uses `OPENAI_MODEL`, defaulting to `gpt-5-mini`
+- Sends a structured training summary to OpenAI
+- Returns next-session suggestions, progression advice, recovery flags, and PR context
+- Tests mock the OpenAI call so the test suite does not spend credits
+
 ## Status
 
 Gymmy is currently in backend MVP development. The backend API is functional and tested. The next major step is building the React frontend so Gymmy can be used from the browser instead of Swagger.
@@ -323,7 +340,7 @@ Gymmy is currently in backend MVP development. The backend API is functional and
 - Add template management
 - Add bodyweight progress charts
 - Add progress photo timeline
-- Add OpenAI-powered coaching assistant
+- Expand OpenAI-powered coaching assistant
 - Add seed/demo data
 - Add screenshots
 - Add Docker support

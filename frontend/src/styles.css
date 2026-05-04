@@ -32,7 +32,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -147,7 +148,8 @@ label {
   font-weight: 700;
 }
 
-input {
+input,
+textarea {
   width: 100%;
   min-height: 42px;
   border: 1px solid var(--line);
@@ -157,7 +159,13 @@ input {
   padding: 9px 11px;
 }
 
-input:focus {
+textarea {
+  min-height: 108px;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus {
   border-color: var(--green);
   outline: 3px solid rgba(31, 138, 112, 0.16);
 }
@@ -448,6 +456,12 @@ input:focus {
   line-height: 1.25;
 }
 
+.panel h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .compact-list {
   display: grid;
   gap: 8px;
@@ -543,13 +557,18 @@ input:focus {
 .workout-builder,
 .exercise-detail-list,
 .two-column,
-.history-layout {
+.history-layout,
+.coach-layout {
   display: grid;
   gap: 16px;
 }
 
 .two-column {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.coach-layout {
+  grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1.2fr);
 }
 
 .two-column.wide-left {
@@ -715,11 +734,77 @@ input:focus {
   gap: 4px;
 }
 
+.coach-output-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.coach-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.coach-list li {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f8fafc;
+  padding: 11px 12px;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summary-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f8fafc;
+  padding: 13px;
+}
+
+.summary-card span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.summary-card strong {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.coach-disclaimer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.coach-disclaimer strong {
+  color: var(--green-dark);
+}
+
 @media (max-width: 980px) {
   .dashboard-grid,
   .two-column,
   .two-column.wide-left,
   .history-layout,
+  .coach-layout,
+  .coach-output-grid,
   .form-grid.two {
     grid-template-columns: 1fr;
   }
@@ -776,7 +861,8 @@ input:focus {
 
   .builder-heading,
   .builder-actions,
-  .detail-header {
+  .detail-header,
+  .coach-disclaimer {
     align-items: stretch;
     flex-direction: column;
   }

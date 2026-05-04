@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  AlertTriangle,
+  Brain,
   Camera,
   ClipboardList,
   Dumbbell,
@@ -16,8 +18,8 @@ import {
   Save,
   Scale,
   ShieldCheck,
+  Target,
   Trash2,
-  UserPlus,
 } from "lucide-react";
 
 import { apiRequest, resolveMediaUrl } from "./api";
@@ -26,6 +28,7 @@ const TOKEN_STORAGE_KEY = "gymmy_token";
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "coach", label: "Coach", icon: Brain },
   { id: "log", label: "Log Workout", icon: Dumbbell },
   { id: "workouts", label: "History", icon: History },
   { id: "templates", label: "Templates", icon: ClipboardList },
@@ -509,6 +512,154 @@ function Dashboard({ token, navigate }) {
             )}
           </section>
         </div>
+      )}
+    </>
+  );
+}
+
+function AdviceList({ icon: Icon, title, items }) {
+  return (
+    <section className="panel">
+      <div className="panel-heading">
+        <h2>
+          <Icon size={18} />
+          {title}
+        </h2>
+      </div>
+      {items.length === 0 ? (
+        <EmptyState icon={Icon} title="No advice returned" />
+      ) : (
+        <ul className="coach-list">
+          {items.map((item, index) => (
+            <li key={`${title}-${index}`}>{item}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function CoachPage({ token }) {
+  const [focus, setFocus] = useState("");
+  const [advice, setAdvice] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const requestAdvice = async (event) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+
+    try {
+      const data = await apiRequest("/coach/", {
+        method: "POST",
+        token,
+        body: {
+          focus: focus.trim() || null,
+        },
+      });
+      setAdvice(data);
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const summary = advice?.summary;
+
+  return (
+    <>
+      <PageHeader eyebrow="AI coaching" title="Coach" />
+
+      <div className="coach-layout">
+        <section className="panel">
+          <div className="panel-heading">
+            <h2>
+              <Brain size={18} />
+              Generate guidance
+            </h2>
+          </div>
+          <form className="form-stack" onSubmit={requestAdvice}>
+            <label>
+              Focus
+              <textarea
+                onChange={(event) => setFocus(event.target.value)}
+                placeholder="Optional: bench progression, recovery, next lower-body session"
+                value={focus}
+              />
+            </label>
+            <button className="primary-button" disabled={isSubmitting} type="submit">
+              {isSubmitting ? <Loader2 className="spin" size={18} /> : <Brain size={18} />}
+              Generate advice
+            </button>
+          </form>
+          <Notice type="error">{error}</Notice>
+        </section>
+
+        <section className="panel">
+          <div className="panel-heading">
+            <h2>Training snapshot</h2>
+          </div>
+          {summary ? (
+            <div className="summary-grid">
+              <div className="summary-card">
+                <span>Recent workouts</span>
+                <strong>{summary.recent_workouts.length}</strong>
+              </div>
+              <div className="summary-card">
+                <span>Last 7 days</span>
+                <strong>{summary.training_frequency.workouts_last_7_days}</strong>
+              </div>
+              <div className="summary-card">
+                <span>Bodyweight</span>
+                <strong>
+                  {summary.bodyweight_trend.current_weight
+                    ? `${summary.bodyweight_trend.current_weight} lb`
+                    : "--"}
+                </strong>
+              </div>
+              <div className="summary-card">
+                <span>Photos</span>
+                <strong>{summary.progress_photos.count}</strong>
+              </div>
+            </div>
+          ) : (
+            <EmptyState icon={Brain} title="No coaching run yet" />
+          )}
+        </section>
+      </div>
+
+      {advice && (
+        <>
+          <div className="coach-output-grid">
+            <AdviceList
+              icon={Dumbbell}
+              items={advice.next_session_suggestions}
+              title="Next session"
+            />
+            <AdviceList
+              icon={Target}
+              items={advice.progression_advice}
+              title="Progression"
+            />
+            <AdviceList
+              icon={AlertTriangle}
+              items={advice.recovery_flags}
+              title="Recovery flags"
+            />
+            <AdviceList
+              icon={LineChart}
+              items={advice.pr_estimate_context}
+              title="PR context"
+            />
+          </div>
+
+          <section className="panel coach-disclaimer">
+            <span>{advice.disclaimer}</span>
+            <strong>{advice.model}</strong>
+          </section>
+        </>
       )}
     </>
   );
@@ -1577,6 +1728,7 @@ function App() {
 
   const pages = {
     dashboard: <Dashboard navigate={navigate} token={token} />,
+    coach: <CoachPage token={token} />,
     log: <WorkoutLogger token={token} />,
     workouts: (
       <WorkoutHistory navigate={navigate} selectedId={selectedId} token={token} />

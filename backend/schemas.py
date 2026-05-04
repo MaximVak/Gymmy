@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -126,3 +126,18 @@ class ProgressPhotoOut(BaseModel):
     notes: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# Coach schemas
+class CoachRequest(BaseModel):
+    focus: Optional[str] = Field(default=None, max_length=500)
+
+
+class CoachOut(BaseModel):
+    summary: dict[str, Any]
+    next_session_suggestions: List[str]
+    progression_advice: List[str]
+    recovery_flags: List[str]
+    pr_estimate_context: List[str]
+    disclaimer: str
+    model: str
