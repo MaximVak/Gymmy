@@ -113,6 +113,131 @@ def test_bodyweight_validation_error():
     assert response.status_code == 422
 
 
+def test_create_get_and_delete_nutrition_entries():
+    headers = signup_and_login()
+
+    create_response = client.post(
+        "/nutrition/",
+        headers=headers,
+        json={
+            "item_name": "Chicken rice bowl",
+            "calories": 650,
+            "protein": 45,
+            "carbs": 70,
+            "fat": 18,
+            "date": "2026-05-05T12:00:00Z",
+        },
+    )
+
+    assert create_response.status_code == 200
+
+    created = create_response.json()
+    assert created["item_name"] == "Chicken rice bowl"
+    assert created["calories"] == 650
+    assert created["protein"] == 45
+    assert created["carbs"] == 70
+    assert created["fat"] == 18
+
+    get_response = client.get(
+        "/nutrition/",
+        headers=headers,
+        params={"date": "2026-05-05"},
+    )
+
+    assert get_response.status_code == 200
+
+    entries = get_response.json()
+    assert len(entries) == 1
+    assert entries[0]["item_name"] == "Chicken rice bowl"
+
+    delete_response = client.delete(
+        f"/nutrition/{created['id']}",
+        headers=headers,
+    )
+
+    assert delete_response.status_code == 200
+
+    empty_response = client.get(
+        "/nutrition/",
+        headers=headers,
+        params={"date": "2026-05-05"},
+    )
+
+    assert empty_response.status_code == 200
+    assert empty_response.json() == []
+
+
+def test_create_and_update_nutrition_goals():
+    headers = signup_and_login()
+
+    empty_response = client.get("/nutrition/goals", headers=headers)
+
+    assert empty_response.status_code == 200
+    assert empty_response.json() is None
+
+    create_response = client.put(
+        "/nutrition/goals",
+        headers=headers,
+        json={
+            "calories": 2600,
+            "protein": 180,
+            "carbs": 300,
+            "fat": 75,
+        },
+    )
+
+    assert create_response.status_code == 200
+
+    created = create_response.json()
+    assert created["calories"] == 2600
+    assert created["protein"] == 180
+    assert created["carbs"] == 300
+    assert created["fat"] == 75
+
+    update_response = client.put(
+        "/nutrition/goals",
+        headers=headers,
+        json={
+            "calories": 2400,
+            "protein": 175,
+            "carbs": 250,
+            "fat": 70,
+        },
+    )
+
+    assert update_response.status_code == 200
+
+    updated = update_response.json()
+    assert updated["id"] == created["id"]
+    assert updated["calories"] == 2400
+    assert updated["protein"] == 175
+    assert updated["carbs"] == 250
+    assert updated["fat"] == 70
+
+    get_response = client.get("/nutrition/goals", headers=headers)
+
+    assert get_response.status_code == 200
+    assert get_response.json()["calories"] == 2400
+
+
+def test_nutrition_validation_error():
+    headers = signup_and_login()
+
+    response = client.post(
+        "/nutrition/",
+        headers=headers,
+        json={
+            "item_name": "",
+            "calories": -1,
+            "protein": 0,
+            "carbs": 0,
+            "fat": 0,
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_create_and_get_progress_photos():
     headers = signup_and_login()
 

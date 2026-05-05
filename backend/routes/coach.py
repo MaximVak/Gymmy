@@ -15,6 +15,22 @@ router = APIRouter(prefix="/coach", tags=["Coach"])
 
 DEFAULT_COACH_MODEL = "gpt-5-mini"
 
+UNIT_PREFERENCE = {
+    "system": "imperial",
+    "weight": "lb",
+    "bodyweight": "lb",
+    "volume": "lb",
+    "estimated_1rm": "lb",
+    "display_rule": (
+        "Use pounds (lb/lbs) for all weights. Do not use kilograms unless the "
+        "user explicitly asks for a metric conversion."
+    ),
+    "dumbbell_rule": (
+        "For dumbbell exercises, logged weight means the weight of one dumbbell "
+        "unless the user notes otherwise."
+    ),
+}
+
 COACH_RESPONSE_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -223,6 +239,7 @@ def build_coaching_summary(
     db: Session,
     current_user: models.User,
     focus: str | None = None,
+    messages: list[schemas.CoachMessage] | None = None,
 ) -> dict[str, Any]:
     workouts = (
         db.query(models.Workout)
@@ -242,6 +259,11 @@ def build_coaching_summary(
         .order_by(models.ProgressPhoto.date.desc())
         .all()
     )
+    nutrition_goal = (
+        db.query(models.NutritionGoal)
+        .filter(models.NutritionGoal.user_id == current_user.id)
+        .first()
+    )
 
     recent_workouts = [serialize_workout(workout) for workout in workouts[:10]]
     bodyweight_trend = get_bodyweight_trend(bodyweight_logs)
@@ -249,14 +271,37 @@ def build_coaching_summary(
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "units": UNIT_PREFERENCE,
         "user": {
             "id": current_user.id,
             "username": current_user.username,
         },
         "focus": focus,
+        "conversation_history": [
+            {
+                "role": message.role,
+                "content": message.content,
+            }
+            for message in (messages or [])
+        ],
         "recent_workouts": recent_workouts,
         "best_pr_estimates": get_best_pr_estimates(workouts),
         "bodyweight_trend": bodyweight_trend,
+        "nutrition_goal": (
+            {
+                "calories": nutrition_goal.calories,
+                "protein": nutrition_goal.protein,
+                "carbs": nutrition_goal.carbs,
+                "fat": nutrition_goal.fat,
+                "updated_at": (
+                    as_utc(nutrition_goal.updated_at).isoformat()
+                    if nutrition_goal.updated_at
+                    else None
+                ),
+            }
+            if nutrition_goal
+            else None
+        ),
         "training_frequency": training_frequency,
         "recovery_signals": get_recovery_signals(
             recent_workouts,
@@ -303,7 +348,13 @@ def generate_coaching_response(summary: dict[str, Any]) -> dict[str, Any]:
             instructions=(
                 "You are Gymmy Coach, a supportive but direct strength-training assistant. "
                 "Answer the user's focus question in direct_answer. "
+                "Use conversation_history for follow-up questions, preserving the context of earlier user questions and your prior answers. "
+                "All Gymmy weights in the provided summary are pounds, including set weights, bodyweight, workout volume, and estimated PRs. "
+                "Use lb/lbs for all weight numbers in direct_answer, and never convert to kg/kilograms unless the user explicitly asks for metric conversion. "
+                "For dumbbell exercises, assume a logged dumbbell weight is the weight of one dumbbell unless the user says otherwise. "
                 "If the question is about the user's own training, lifts, PRs, bodyweight, progress, or logged history, use the provided Gymmy data. "
+                "If the question is about diet, calorie targets, or macro targets, answer directly from broadly accepted nutrition principles; when the user provides height, age, gender, bodyweight, activity level, and goal, give practical starting targets for calories, protein, carbs, and fat. "
+                "If a diet-target question is missing key details, ask for the missing details in one short sentence. "
                 "If the question is a general lifting or fitness question, answer directly from broadly accepted strength and hypertrophy principles, and only mention Gymmy data if it helps. "
                 "Keep direct_answer to one or two plain sentences with no jargon. "
                 "For estimated PR questions, include the estimate, the set it is based on, and a short precision warning if reps are high. "
@@ -358,6 +409,7 @@ def get_coaching_advice(
         db=db,
         current_user=current_user,
         focus=request.focus if request else None,
+        messages=request.messages if request else None,
     )
     coaching = generate_coaching_response(summary)
 

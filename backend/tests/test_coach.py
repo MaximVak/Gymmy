@@ -76,11 +76,37 @@ def test_coach_builds_summary_and_returns_mocked_advice(monkeypatch):
             "notes": "Week 1",
         },
     )
+    client.put(
+        "/nutrition/goals",
+        headers=headers,
+        json={
+            "calories": 2500,
+            "protein": 180,
+            "carbs": 275,
+            "fat": 70,
+        },
+    )
 
     response = client.post(
         "/coach/",
         headers=headers,
-        json={"focus": "Bench progression"},
+        json={
+            "focus": "Bench progression",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "What is my best bench estimate?",
+                },
+                {
+                    "role": "assistant",
+                    "content": "Your best estimate is 215.8 lb.",
+                },
+                {
+                    "role": "user",
+                    "content": "How should I progress it?",
+                },
+            ],
+        },
     )
 
     assert response.status_code == 200
@@ -91,13 +117,19 @@ def test_coach_builds_summary_and_returns_mocked_advice(monkeypatch):
     assert data["model"] == "mock-coach"
     assert data["direct_answer"] == "Your current best estimated 1RM is 215.8 lb, based on 185 lb x 5."
     assert summary["focus"] == "Bench progression"
+    assert summary["units"]["system"] == "imperial"
+    assert summary["units"]["weight"] == "lb"
+    assert "Do not use kilograms" in summary["units"]["display_rule"]
     assert summary["user"]["username"] == "coach_user"
     assert summary["recent_workouts"][0]["name"] == "Push Day"
     assert summary["recent_workouts"][0]["exercises"][0]["name"] == "Bench Press"
     assert summary["best_pr_estimates"][0]["estimated_1rm"] == 215.8
     assert summary["bodyweight_trend"]["current_weight"] == 181.5
+    assert summary["nutrition_goal"]["calories"] == 2500
+    assert summary["nutrition_goal"]["protein"] == 180
     assert summary["progress_photos"]["count"] == 1
     assert captured["summary"]["focus"] == "Bench progression"
+    assert captured["summary"]["conversation_history"][-1]["content"] == "How should I progress it?"
 
 
 def test_coach_returns_clear_error_without_openai_key(monkeypatch):

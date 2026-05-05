@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   Brain,
@@ -18,20 +18,27 @@ import {
   Scale,
   ShieldCheck,
   Trash2,
+  Utensils,
+  X,
 } from "lucide-react";
 
 import { apiRequest, resolveMediaUrl } from "./api";
 
 const TOKEN_STORAGE_KEY = "gymmy_token";
+const COACH_DRAFT_STORAGE_KEY = "gymmy_coach_focus_draft";
+const COACH_MESSAGES_STORAGE_KEY = "gymmy_coach_messages";
+const COACH_ADVICE_STORAGE_KEY = "gymmy_coach_last_advice";
+const LOG_WORKOUT_DRAFT_STORAGE_KEY = "gymmy_log_workout_draft";
+const CoachButtonContext = createContext(null);
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "coach", label: "Coach", icon: Brain },
   { id: "log", label: "Log Workout", icon: Dumbbell },
-  { id: "workouts", label: "History", icon: History },
   { id: "templates", label: "Templates", icon: ClipboardList },
   { id: "bodyweight", label: "Bodyweight", icon: Scale },
+  { id: "nutrition", label: "Nutrition", icon: Utensils },
   { id: "photos", label: "Photos", icon: Camera },
+  { id: "workouts", label: "History", icon: History },
 ];
 
 function getHashRoute() {
@@ -65,6 +72,52 @@ function formatDate(value) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function getTodayInputDate() {
+  const now = new Date();
+  const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
+}
+
+function formatNutritionNumber(value, unit = "") {
+  const number = Number(value) || 0;
+  const formatted = Number.isInteger(number) ? number : number.toFixed(1);
+  return `${formatted}${unit}`;
+}
+
+function readCoachMessages() {
+  try {
+    const savedMessages = JSON.parse(
+      localStorage.getItem(COACH_MESSAGES_STORAGE_KEY) || "[]",
+    );
+
+    if (!Array.isArray(savedMessages)) {
+      return [];
+    }
+
+    return savedMessages
+      .filter(
+        (message) =>
+          (message.role === "user" || message.role === "assistant") &&
+          typeof message.content === "string" &&
+          message.content.trim(),
+      )
+      .map((message) => ({
+        role: message.role,
+        content: message.content,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function readCoachAdvice() {
+  try {
+    return JSON.parse(localStorage.getItem(COACH_ADVICE_STORAGE_KEY) || "null");
+  } catch {
+    return null;
+  }
 }
 
 function getWorkoutVolume(workout) {
@@ -294,13 +347,29 @@ function AppShell({ children, currentPage, navigate, onLogout, user }) {
 }
 
 function PageHeader({ title, eyebrow, actions }) {
+  const openCoach = useContext(CoachButtonContext);
+
   return (
     <header className="page-header">
       <div>
         <p className="eyebrow">{eyebrow}</p>
         <h1>{title}</h1>
       </div>
-      {actions && <div className="header-actions">{actions}</div>}
+      {(actions || openCoach) && (
+        <div className="header-actions">
+          {actions}
+          {openCoach && (
+            <button
+              className="secondary-button coach-header-button"
+              onClick={openCoach}
+              type="button"
+            >
+              <Brain size={18} />
+              Coach
+            </button>
+          )}
+        </div>
+      )}
     </header>
   );
 }
@@ -378,7 +447,7 @@ function Dashboard({ token, navigate }) {
         <FullScreenLoader />
       ) : (
         <div className="dashboard-grid">
-          <section className="metric-card accent-green">
+          <section className="metric-card accent-workouts">
             <div className="card-icon">
               <Dumbbell size={20} />
             </div>
@@ -386,7 +455,7 @@ function Dashboard({ token, navigate }) {
             <strong>{recentWorkouts.length}</strong>
           </section>
 
-          <section className="metric-card accent-blue">
+          <section className="metric-card accent-bodyweight">
             <div className="card-icon">
               <Scale size={20} />
             </div>
@@ -396,7 +465,7 @@ function Dashboard({ token, navigate }) {
             </strong>
           </section>
 
-          <section className="metric-card accent-orange">
+          <section className="metric-card accent-volume">
             <div className="card-icon">
               <Activity size={20} />
             </div>
@@ -515,26 +584,72 @@ function Dashboard({ token, navigate }) {
   );
 }
 
-function CoachPage({ token }) {
-  const [focus, setFocus] = useState("");
-  const [advice, setAdvice] = useState(null);
+function CoachChatModal({ isOpen, onClose, token }) {
+  const [focus, setFocus] = useState(
+    () => localStorage.getItem(COACH_DRAFT_STORAGE_KEY) || "",
+  );
+  const [messages, setMessages] = useState(readCoachMessages);
+  const [advice, setAdvice] = useState(readCoachAdvice);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const saveMessages = (nextMessages) => {
+    setMessages(nextMessages);
+    localStorage.setItem(COACH_MESSAGES_STORAGE_KEY, JSON.stringify(nextMessages));
+  };
+
+  const saveAdvice = (nextAdvice) => {
+    setAdvice(nextAdvice);
+
+    if (nextAdvice) {
+      localStorage.setItem(COACH_ADVICE_STORAGE_KEY, JSON.stringify(nextAdvice));
+    } else {
+      localStorage.removeItem(COACH_ADVICE_STORAGE_KEY);
+    }
+  };
+
+  const updateFocus = (value) => {
+    setFocus(value);
+
+    if (value) {
+      localStorage.setItem(COACH_DRAFT_STORAGE_KEY, value);
+    } else {
+      localStorage.removeItem(COACH_DRAFT_STORAGE_KEY);
+    }
+  };
+
   const requestAdvice = async (event) => {
     event.preventDefault();
+    const question = focus.trim();
+
+    if (!question) {
+      setError("Type a question for Coach.");
+      return;
+    }
+
     setIsSubmitting(true);
     setError("");
 
     try {
+      const userMessage = { role: "user", content: question };
+      const nextMessages = [...messages, userMessage];
       const data = await apiRequest("/coach/", {
         method: "POST",
         token,
         body: {
-          focus: focus.trim() || null,
+          focus: question,
+          messages: nextMessages.slice(-20),
         },
       });
-      setAdvice(data);
+      saveAdvice(data);
+      saveMessages([
+        ...nextMessages,
+        {
+          role: "assistant",
+          content: data.direct_answer,
+        },
+      ]);
+      updateFocus("");
     } catch (apiError) {
       setError(apiError.message);
     } finally {
@@ -542,111 +657,158 @@ function CoachPage({ token }) {
     }
   };
 
-  const summary = advice?.summary;
+  const clearConversation = () => {
+    saveMessages([]);
+    saveAdvice(null);
+    setError("");
+  };
+
+  if (!isOpen) {
+    return null;
+  }
 
   return (
-    <>
-      <PageHeader eyebrow="AI coaching" title="Coach" />
-
-      <div className="coach-layout">
-        <section className="panel">
-          <div className="panel-heading">
+    <div className="coach-modal-backdrop" role="presentation">
+      <section
+        aria-label="Coach chat"
+        className="coach-modal"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="coach-modal-header">
+          <div>
             <h2>
               <Brain size={18} />
-              Ask a question
+              Coach Gymmy
             </h2>
           </div>
-          <form className="form-stack" onSubmit={requestAdvice}>
-            <label>
-              Focus
-              <textarea
-                onChange={(event) => setFocus(event.target.value)}
-                placeholder="What is my estimated PR based on Bench Press?"
-                value={focus}
-              />
-            </label>
-            <button className="primary-button" disabled={isSubmitting} type="submit">
-              {isSubmitting ? <Loader2 className="spin" size={18} /> : <Brain size={18} />}
-              Ask coach
+          <div className="header-actions">
+            {messages.length > 0 && (
+              <button className="text-button" onClick={clearConversation} type="button">
+                Clear chat
+              </button>
+            )}
+            <button
+              className="icon-button"
+              onClick={onClose}
+              title="Close coach"
+              type="button"
+            >
+              <X size={17} />
             </button>
-          </form>
-          <Notice type="error">{error}</Notice>
-        </section>
-
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>Training snapshot</h2>
           </div>
-          {summary ? (
-            <div className="summary-grid">
-              <div className="summary-card">
-                <span>Recent workouts</span>
-                <strong>{summary.recent_workouts.length}</strong>
-              </div>
-              <div className="summary-card">
-                <span>Last 7 days</span>
-                <strong>{summary.training_frequency.workouts_last_7_days}</strong>
-              </div>
-              <div className="summary-card">
-                <span>Bodyweight</span>
-                <strong>
-                  {summary.bodyweight_trend.current_weight
-                    ? `${summary.bodyweight_trend.current_weight} lb`
-                    : "--"}
-                </strong>
-              </div>
-              <div className="summary-card">
-                <span>Photos</span>
-                <strong>{summary.progress_photos.count}</strong>
-              </div>
-            </div>
-          ) : (
-            <EmptyState icon={Brain} title="No coaching run yet" />
-          )}
-        </section>
-      </div>
+        </div>
 
-      {advice && (
-        <>
-          <section className="panel direct-answer-panel">
-            <div className="panel-heading">
-              <h2>
-                <Brain size={18} />
-                Answer
-              </h2>
+        <div className="coach-chat">
+          {messages.map((message, index) => (
+            <div
+              className={`coach-message ${message.role}`}
+              key={`${message.role}-${index}`}
+            >
+              <span>{message.role === "user" ? "You" : "Coach Gymmy"}</span>
+              <p>{message.content}</p>
             </div>
-            <p>{advice.direct_answer}</p>
-          </section>
+          ))}
+        </div>
 
-          <section className="panel coach-disclaimer">
+        <form className="form-stack coach-modal-form" onSubmit={requestAdvice}>
+          <label>
+            Ask Coach
+            <textarea
+              onChange={(event) => updateFocus(event.target.value)}
+              placeholder="Ask a question or add a follow-up..."
+              value={focus}
+            />
+          </label>
+          <button className="primary-button" disabled={isSubmitting} type="submit">
+            {isSubmitting ? <Loader2 className="spin" size={18} /> : <Brain size={18} />}
+            Ask coach
+          </button>
+        </form>
+        <Notice type="error">{error}</Notice>
+
+        {advice && (
+          <section className="coach-disclaimer">
             <span>{advice.disclaimer}</span>
             <strong>{advice.model}</strong>
           </section>
-        </>
-      )}
-    </>
+        )}
+      </section>
+    </div>
   );
 }
 
 const newSet = () => ({ reps: "8", weight: "" });
 const newExercise = () => ({ name: "", sets: [newSet()] });
+const newWorkoutDraft = () => ({
+  name: "Workout",
+  notes: "",
+  exercises: [newExercise()],
+});
+
+function readWorkoutDraft() {
+  try {
+    const savedDraft = localStorage.getItem(LOG_WORKOUT_DRAFT_STORAGE_KEY);
+
+    if (!savedDraft) {
+      return newWorkoutDraft();
+    }
+
+    const parsedDraft = JSON.parse(savedDraft);
+
+    if (!parsedDraft || !Array.isArray(parsedDraft.exercises)) {
+      return newWorkoutDraft();
+    }
+
+    const exercises = parsedDraft.exercises
+      .filter(Boolean)
+      .map((exercise) => ({
+        name: typeof exercise.name === "string" ? exercise.name : "",
+        sets:
+          Array.isArray(exercise.sets) && exercise.sets.length > 0
+            ? exercise.sets.filter(Boolean).map((set) => ({
+                reps: set.reps === undefined || set.reps === null ? "8" : String(set.reps),
+                weight:
+                  set.weight === undefined || set.weight === null
+                    ? ""
+                    : String(set.weight),
+              }))
+            : [newSet()],
+      }));
+
+    return {
+      name: typeof parsedDraft.name === "string" ? parsedDraft.name : "Workout",
+      notes: typeof parsedDraft.notes === "string" ? parsedDraft.notes : "",
+      exercises: exercises.length > 0 ? exercises : [newExercise()],
+    };
+  } catch {
+    return newWorkoutDraft();
+  }
+}
 
 function WorkoutLogger({ token }) {
-  const [workout, setWorkout] = useState({
-    name: "Workout",
-    notes: "",
-    exercises: [newExercise()],
-  });
+  const [workout, setWorkout] = useState(readWorkoutDraft);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  const updateWorkoutDraft = (updater) => {
+    setWorkout((current) => {
+      const nextWorkout = typeof updater === "function" ? updater(current) : updater;
+      localStorage.setItem(
+        LOG_WORKOUT_DRAFT_STORAGE_KEY,
+        JSON.stringify(nextWorkout),
+      );
+      return nextWorkout;
+    });
+  };
+
   const updateWorkout = (patch) => {
-    setWorkout((current) => ({ ...current, ...patch }));
+    updateWorkoutDraft((current) => ({ ...current, ...patch }));
   };
 
   const updateExercise = (exerciseIndex, patch) => {
-    setWorkout((current) => ({
+    updateWorkoutDraft((current) => ({
       ...current,
       exercises: current.exercises.map((exercise, index) =>
         index === exerciseIndex ? { ...exercise, ...patch } : exercise,
@@ -655,7 +817,7 @@ function WorkoutLogger({ token }) {
   };
 
   const updateSet = (exerciseIndex, setIndex, patch) => {
-    setWorkout((current) => ({
+    updateWorkoutDraft((current) => ({
       ...current,
       exercises: current.exercises.map((exercise, index) =>
         index === exerciseIndex
@@ -671,21 +833,21 @@ function WorkoutLogger({ token }) {
   };
 
   const addExercise = () => {
-    setWorkout((current) => ({
+    updateWorkoutDraft((current) => ({
       ...current,
       exercises: [...current.exercises, newExercise()],
     }));
   };
 
   const removeExercise = (exerciseIndex) => {
-    setWorkout((current) => ({
+    updateWorkoutDraft((current) => ({
       ...current,
       exercises: current.exercises.filter((_, index) => index !== exerciseIndex),
     }));
   };
 
   const addSet = (exerciseIndex) => {
-    setWorkout((current) => ({
+    updateWorkoutDraft((current) => ({
       ...current,
       exercises: current.exercises.map((exercise, index) =>
         index === exerciseIndex
@@ -696,7 +858,7 @@ function WorkoutLogger({ token }) {
   };
 
   const removeSet = (exerciseIndex, setIndex) => {
-    setWorkout((current) => ({
+    updateWorkoutDraft((current) => ({
       ...current,
       exercises: current.exercises.map((exercise, index) =>
         index === exerciseIndex
@@ -749,11 +911,8 @@ function WorkoutLogger({ token }) {
         body: payload,
       });
 
-      setWorkout({
-        name: "Workout",
-        notes: "",
-        exercises: [newExercise()],
-      });
+      localStorage.removeItem(LOG_WORKOUT_DRAFT_STORAGE_KEY);
+      setWorkout(newWorkoutDraft());
       setMessage("Workout saved.");
     } catch (apiError) {
       setError(apiError.message);
@@ -1416,6 +1575,536 @@ function BodyweightChart({ logs, compact = false }) {
   );
 }
 
+function MacroPieChart({ totals }) {
+  const macros = [
+    {
+      name: "Protein",
+      grams: totals.protein,
+      calories: totals.protein * 4,
+      color: "#b9f4c9",
+    },
+    {
+      name: "Carbs",
+      grams: totals.carbs,
+      calories: totals.carbs * 4,
+      color: "#9fd8ff",
+    },
+    {
+      name: "Fat",
+      grams: totals.fat,
+      calories: totals.fat * 9,
+      color: "#ffb8b8",
+    },
+  ];
+  const macroCalories = macros.reduce((total, macro) => total + macro.calories, 0);
+
+  if (macroCalories <= 0) {
+    return (
+      <div className="nutrition-pie-empty">
+        <Utensils size={20} />
+        <span>No macro totals yet</span>
+      </div>
+    );
+  }
+
+  let currentPercent = 0;
+  const gradient = macros
+    .map((macro) => {
+      const start = currentPercent;
+      currentPercent += (macro.calories / macroCalories) * 100;
+      return `${macro.color} ${start}% ${currentPercent}%`;
+    })
+    .join(", ");
+
+  return (
+    <div className="nutrition-pie-wrap">
+      <div
+        aria-label="Macro calorie split"
+        className="nutrition-pie"
+        role="img"
+        style={{ background: `conic-gradient(${gradient})` }}
+      >
+        <div>
+          <strong>{Math.round(macroCalories)}</strong>
+          <span>macro cal</span>
+        </div>
+      </div>
+      <div className="nutrition-legend">
+        {macros.map((macro) => {
+          const percent = Math.round((macro.calories / macroCalories) * 100);
+
+          return (
+            <div className="nutrition-legend-row" key={macro.name}>
+              <span style={{ background: macro.color }} />
+              <strong>{macro.name}</strong>
+              <em>
+                {formatNutritionNumber(macro.grams, "g")} / {percent}%
+              </em>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function NutritionGoalProgress({ goals, totals }) {
+  if (!goals) {
+    return null;
+  }
+
+  const rows = [
+    {
+      label: "Calories",
+      current: totals.calories,
+      target: goals.calories,
+      unit: "",
+    },
+    {
+      label: "Protein",
+      current: totals.protein,
+      target: goals.protein,
+      unit: "g",
+    },
+    {
+      label: "Carbs",
+      current: totals.carbs,
+      target: goals.carbs,
+      unit: "g",
+    },
+    {
+      label: "Fat",
+      current: totals.fat,
+      target: goals.fat,
+      unit: "g",
+    },
+  ];
+
+  return (
+    <div className="nutrition-goal-progress">
+      {rows.map((row) => {
+        const percent =
+          row.target > 0 ? Math.min((row.current / row.target) * 100, 100) : 0;
+
+        return (
+          <div className="nutrition-progress-row" key={row.label}>
+            <div>
+              <strong>{row.label}</strong>
+              <span>
+                {formatNutritionNumber(row.current, row.unit)} /{" "}
+                {formatNutritionNumber(row.target, row.unit)}
+              </span>
+            </div>
+            <div className="nutrition-progress-track">
+              <span style={{ width: `${percent}%` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function NutritionPage({ openCoach, token }) {
+  const [entries, setEntries] = useState([]);
+  const [goals, setGoals] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(getTodayInputDate());
+  const [form, setForm] = useState({
+    item_name: "",
+    calories: "",
+    protein: "",
+    carbs: "",
+    fat: "",
+  });
+  const [goalForm, setGoalForm] = useState({
+    calories: "",
+    protein: "",
+    carbs: "",
+    fat: "",
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingGoals, setIsSavingGoals] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  const loadEntries = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const query = selectedDate ? `?date=${encodeURIComponent(selectedDate)}` : "";
+      const data = await apiRequest(`/nutrition/${query}`, { token });
+      setEntries(data);
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadGoals = async () => {
+    setError("");
+
+    try {
+      const data = await apiRequest("/nutrition/goals", { token });
+      setGoals(data);
+
+      if (data) {
+        setGoalForm({
+          calories: String(data.calories),
+          protein: String(data.protein),
+          carbs: String(data.carbs),
+          fat: String(data.fat),
+        });
+      }
+    } catch (apiError) {
+      setError(apiError.message);
+    }
+  };
+
+  useEffect(() => {
+    loadEntries();
+  }, [selectedDate, token]);
+
+  useEffect(() => {
+    loadGoals();
+  }, [token]);
+
+  const totals = useMemo(
+    () =>
+      entries.reduce(
+        (total, entry) => ({
+          calories: total.calories + entry.calories,
+          protein: total.protein + entry.protein,
+          carbs: total.carbs + entry.carbs,
+          fat: total.fat + entry.fat,
+        }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      ),
+    [entries],
+  );
+
+  const updateForm = (patch) => {
+    setForm((current) => ({ ...current, ...patch }));
+  };
+
+  const updateGoalForm = (patch) => {
+    setGoalForm((current) => ({ ...current, ...patch }));
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await apiRequest("/nutrition/", {
+        method: "POST",
+        token,
+        body: {
+          item_name: form.item_name.trim(),
+          calories: Number(form.calories),
+          protein: Number(form.protein),
+          carbs: Number(form.carbs),
+          fat: Number(form.fat),
+          date: selectedDate ? new Date(`${selectedDate}T12:00:00`).toISOString() : null,
+        },
+      });
+
+      setForm({
+        item_name: "",
+        calories: "",
+        protein: "",
+        carbs: "",
+        fat: "",
+      });
+      setMessage("Nutrition entry saved.");
+      await loadEntries();
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const deleteEntry = async (entryId) => {
+    setError("");
+    setMessage("");
+
+    try {
+      await apiRequest(`/nutrition/${entryId}`, {
+        method: "DELETE",
+        token,
+      });
+      await loadEntries();
+    } catch (apiError) {
+      setError(apiError.message);
+    }
+  };
+
+  const submitGoals = async (event) => {
+    event.preventDefault();
+    setIsSavingGoals(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const data = await apiRequest("/nutrition/goals", {
+        method: "PUT",
+        token,
+        body: {
+          calories: Number(goalForm.calories),
+          protein: Number(goalForm.protein),
+          carbs: Number(goalForm.carbs),
+          fat: Number(goalForm.fat),
+        },
+      });
+      setGoals(data);
+      setGoalForm({
+        calories: String(data.calories),
+        protein: String(data.protein),
+        carbs: String(data.carbs),
+        fat: String(data.fat),
+      });
+      setMessage("Nutrition goals saved.");
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setIsSavingGoals(false);
+    }
+  };
+
+  const askCoachForTargets = () => {
+    localStorage.setItem(
+      COACH_DRAFT_STORAGE_KEY,
+      "What should my daily calories, protein, carbs, and fat targets be? My height is __, age __, gender __, bodyweight __ lb, activity level __, and goal is __.",
+    );
+    openCoach();
+  };
+
+  return (
+    <>
+      <PageHeader eyebrow="Fuel" title="Nutrition" />
+
+      <section className="panel">
+        <div className="panel-heading">
+          <h2>Daily goals</h2>
+        </div>
+        <form className="form-stack" onSubmit={submitGoals}>
+          <div className="form-grid two">
+            <label>
+              Calorie goal
+              <input
+                min="0"
+                onChange={(event) => updateGoalForm({ calories: event.target.value })}
+                required
+                step="1"
+                type="number"
+                value={goalForm.calories}
+              />
+            </label>
+            <label>
+              Protein goal
+              <input
+                min="0"
+                onChange={(event) => updateGoalForm({ protein: event.target.value })}
+                required
+                step="0.1"
+                type="number"
+                value={goalForm.protein}
+              />
+            </label>
+            <label>
+              Carb goal
+              <input
+                min="0"
+                onChange={(event) => updateGoalForm({ carbs: event.target.value })}
+                required
+                step="0.1"
+                type="number"
+                value={goalForm.carbs}
+              />
+            </label>
+            <label>
+              Fat goal
+              <input
+                min="0"
+                onChange={(event) => updateGoalForm({ fat: event.target.value })}
+                required
+                step="0.1"
+                type="number"
+                value={goalForm.fat}
+              />
+            </label>
+          </div>
+          <div className="nutrition-goals-actions">
+            <p>
+              Ask Coach about your diet goals for optimal targets based on your height,
+              age, gender, bodyweight, and activity level.
+            </p>
+            <button className="text-button" onClick={askCoachForTargets} type="button">
+              Ask Coach
+            </button>
+          </div>
+          <button className="primary-button" disabled={isSavingGoals} type="submit">
+            {isSavingGoals ? <Loader2 className="spin" size={18} /> : <Save size={18} />}
+            Save goals
+          </button>
+        </form>
+      </section>
+
+      <div className="two-column wide-left">
+        <section className="panel">
+          <div className="panel-heading">
+            <h2>
+              <Utensils size={18} />
+              Daily totals
+            </h2>
+          </div>
+
+          <label>
+            Day
+            <input
+              onChange={(event) => setSelectedDate(event.target.value)}
+              type="date"
+              value={selectedDate}
+            />
+          </label>
+
+          <div className="summary-grid nutrition-total-grid">
+            <div className="summary-card">
+              <span>Calories</span>
+              <strong>{formatNutritionNumber(totals.calories)}</strong>
+            </div>
+            <div className="summary-card">
+              <span>Protein</span>
+              <strong>{formatNutritionNumber(totals.protein, "g")}</strong>
+            </div>
+            <div className="summary-card">
+              <span>Carbs</span>
+              <strong>{formatNutritionNumber(totals.carbs, "g")}</strong>
+            </div>
+            <div className="summary-card">
+              <span>Fat</span>
+              <strong>{formatNutritionNumber(totals.fat, "g")}</strong>
+            </div>
+          </div>
+
+          <MacroPieChart totals={totals} />
+          <NutritionGoalProgress goals={goals} totals={totals} />
+        </section>
+
+        <section className="panel">
+          <div className="panel-heading">
+            <h2>New entry</h2>
+          </div>
+          <form className="form-stack" onSubmit={submit}>
+            <label>
+              Item name
+              <input
+                onChange={(event) => updateForm({ item_name: event.target.value })}
+                placeholder="Chicken rice bowl"
+                required
+                type="text"
+                value={form.item_name}
+              />
+            </label>
+            <div className="form-grid two">
+              <label>
+                Calories
+                <input
+                  min="0"
+                  onChange={(event) => updateForm({ calories: event.target.value })}
+                  required
+                  step="1"
+                  type="number"
+                  value={form.calories}
+                />
+              </label>
+              <label>
+                Protein
+                <input
+                  min="0"
+                  onChange={(event) => updateForm({ protein: event.target.value })}
+                  required
+                  step="0.1"
+                  type="number"
+                  value={form.protein}
+                />
+              </label>
+              <label>
+                Carbs
+                <input
+                  min="0"
+                  onChange={(event) => updateForm({ carbs: event.target.value })}
+                  required
+                  step="0.1"
+                  type="number"
+                  value={form.carbs}
+                />
+              </label>
+              <label>
+                Fat
+                <input
+                  min="0"
+                  onChange={(event) => updateForm({ fat: event.target.value })}
+                  required
+                  step="0.1"
+                  type="number"
+                  value={form.fat}
+                />
+              </label>
+            </div>
+            <button className="primary-button" disabled={isSubmitting} type="submit">
+              {isSubmitting ? <Loader2 className="spin" size={18} /> : <Save size={18} />}
+              Save entry
+            </button>
+          </form>
+          <Notice type="success">{message}</Notice>
+          <Notice type="error">{error}</Notice>
+        </section>
+      </div>
+
+      <section className="panel">
+        <div className="panel-heading">
+          <h2>Entries</h2>
+        </div>
+        {isLoading ? (
+          <FullScreenLoader />
+        ) : entries.length === 0 ? (
+          <EmptyState icon={Utensils} title="No nutrition entries" />
+        ) : (
+          <div className="compact-list">
+            {entries.map((entry) => (
+              <div className="list-row static" key={entry.id}>
+                <div>
+                  <strong>{entry.item_name}</strong>
+                  <span>
+                    {formatNutritionNumber(entry.calories)} cal | Protein{" "}
+                    {formatNutritionNumber(entry.protein, "g")} | Carbs{" "}
+                    {formatNutritionNumber(entry.carbs, "g")} | Fat{" "}
+                    {formatNutritionNumber(entry.fat, "g")}
+                  </span>
+                </div>
+                <button
+                  className="icon-button danger"
+                  onClick={() => deleteEntry(entry.id)}
+                  title="Delete entry"
+                  type="button"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </>
+  );
+}
+
 function ProgressPhotosPage({ token }) {
   const [photos, setPhotos] = useState([]);
   const [file, setFile] = useState(null);
@@ -1631,6 +2320,7 @@ function App() {
   const [token, setToken] = useState(localStorage.getItem(TOKEN_STORAGE_KEY));
   const [user, setUser] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isCoachOpen, setIsCoachOpen] = useState(false);
   const [route, navigate] = useHashRoute();
 
   const [currentPage, selectedId] = route.split("/");
@@ -1639,8 +2329,12 @@ function App() {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     setToken(null);
     setUser(null);
+    setIsCoachOpen(false);
     navigate("dashboard");
   };
+
+  const openCoach = () => setIsCoachOpen(true);
+  const closeCoach = () => setIsCoachOpen(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -1676,6 +2370,13 @@ function App() {
     };
   }, [token]);
 
+  useEffect(() => {
+    if (currentPage === "coach") {
+      setIsCoachOpen(true);
+      navigate("dashboard");
+    }
+  }, [currentPage]);
+
   const handleAuth = (nextToken) => {
     localStorage.setItem(TOKEN_STORAGE_KEY, nextToken);
     setToken(nextToken);
@@ -1691,25 +2392,28 @@ function App() {
 
   const pages = {
     dashboard: <Dashboard navigate={navigate} token={token} />,
-    coach: <CoachPage token={token} />,
     log: <WorkoutLogger token={token} />,
     workouts: (
       <WorkoutHistory navigate={navigate} selectedId={selectedId} token={token} />
     ),
     templates: <TemplatesPage token={token} />,
     bodyweight: <BodyweightPage token={token} />,
+    nutrition: <NutritionPage openCoach={openCoach} token={token} />,
     photos: <ProgressPhotosPage token={token} />,
   };
 
   return (
-    <AppShell
-      currentPage={currentPage}
-      navigate={navigate}
-      onLogout={logout}
-      user={user}
-    >
-      {pages[currentPage] || pages.dashboard}
-    </AppShell>
+    <CoachButtonContext.Provider value={openCoach}>
+      <AppShell
+        currentPage={currentPage}
+        navigate={navigate}
+        onLogout={logout}
+        user={user}
+      >
+        {pages[currentPage] || pages.dashboard}
+      </AppShell>
+      <CoachChatModal isOpen={isCoachOpen} onClose={closeCoach} token={token} />
+    </CoachButtonContext.Provider>
   );
 }
 

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -128,9 +128,51 @@ class ProgressPhotoOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+# Nutrition schemas
+class NutritionEntryCreate(BaseModel):
+    item_name: str = Field(..., min_length=1, max_length=120)
+    calories: float = Field(..., ge=0, le=20000)
+    protein: float = Field(..., ge=0, le=1000)
+    carbs: float = Field(..., ge=0, le=1000)
+    fat: float = Field(..., ge=0, le=1000)
+    date: Optional[datetime] = None
+
+
+class NutritionEntryOut(BaseModel):
+    id: int
+    item_name: str
+    calories: float
+    protein: float
+    carbs: float
+    fat: float
+    date: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class NutritionGoalCreate(BaseModel):
+    calories: float = Field(..., ge=0, le=20000)
+    protein: float = Field(..., ge=0, le=1000)
+    carbs: float = Field(..., ge=0, le=1000)
+    fat: float = Field(..., ge=0, le=1000)
+
+
+class NutritionGoalOut(NutritionGoalCreate):
+    id: int
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # Coach schemas
+class CoachMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(..., min_length=1, max_length=2000)
+
+
 class CoachRequest(BaseModel):
     focus: Optional[str] = Field(default=None, max_length=500)
+    messages: List[CoachMessage] = Field(default_factory=list, max_length=20)
 
 
 class CoachOut(BaseModel):

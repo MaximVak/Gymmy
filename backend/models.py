@@ -39,6 +39,17 @@ class User(Base):
         back_populates="owner",
         cascade="all, delete-orphan",
     )
+    nutrition_entries = relationship(
+        "NutritionEntry",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+    )
+    nutrition_goal = relationship(
+        "NutritionGoal",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
 
 class Workout(Base):
@@ -131,3 +142,32 @@ class ProgressPhoto(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
 
     owner = relationship("User", back_populates="progress_photos")
+
+
+class NutritionEntry(Base):
+    __tablename__ = "nutrition_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_name = Column(String)
+    calories = Column(Float)
+    protein = Column(Float)
+    carbs = Column(Float)
+    fat = Column(Float)
+    date = Column(DateTime, default=utc_now)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+
+    owner = relationship("User", back_populates="nutrition_entries")
+
+
+class NutritionGoal(Base):
+    __tablename__ = "nutrition_goals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    calories = Column(Float)
+    protein = Column(Float)
+    carbs = Column(Float)
+    fat = Column(Float)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+
+    owner = relationship("User", back_populates="nutrition_goal")
