@@ -1,25 +1,22 @@
 # Gymmy
 
-Gymmy is a full-stack fitness tracking app for logging workouts, tracking bodyweight, storing progress photos, estimating PRs, and preparing for AI-assisted coaching recommendations.
+Gymmy is a full-stack fitness tracking app for logging workouts, tracking bodyweight, storing progress photos, estimating PRs, and getting concise AI coaching answers from structured training data.
 
-The backend MVP is built with FastAPI, SQLAlchemy, SQLite, Pydantic, JWT authentication, and pytest. The frontend MVP is built with Vite and React.
+The backend MVP is built with FastAPI, SQLAlchemy, SQLite, Pydantic, JWT authentication, pytest, and the OpenAI API. The frontend MVP is built with Vite and React.
 
-## Current Backend Features
+## Current Features
 
-- User signup, login, and JWT-protected user profile
-- Password hashing with bcrypt
+- User signup, login, logout, and JWT-protected app routes
 - Workout logging with exercises and sets
-- Workout history and workout detail endpoints
+- Workout history and workout detail views
 - Estimated one-rep max lookup by exercise
 - Reusable workout templates
-- Bodyweight tracking
-- Progress photo tracking with URL-only entries
-- Real progress photo uploads for JPEG, PNG, and WEBP files
-- AI coaching endpoint using structured workout data
-- Uploaded image serving from `/uploads`
-- Cascade deletes for user-owned records
-- Pydantic validation for API payloads
-- Basic API test coverage
+- Bodyweight logging and charting
+- Progress photo URL entries and real JPEG/PNG/WEBP uploads
+- AI Coach tab for direct training answers
+- Demo seed data for portfolio screenshots
+- Backend API tests
+- Docker and Docker Compose support
 
 ## Tech Stack
 
@@ -31,6 +28,7 @@ The backend MVP is built with FastAPI, SQLAlchemy, SQLite, Pydantic, JWT authent
 - Pydantic
 - JWT authentication
 - bcrypt password hashing
+- OpenAI API
 - pytest
 
 ### Frontend
@@ -39,6 +37,34 @@ The backend MVP is built with FastAPI, SQLAlchemy, SQLite, Pydantic, JWT authent
 - Vite
 - JavaScript
 - CSS
+- lucide-react icons
+
+### Tooling
+
+- Docker
+- Docker Compose
+
+## Architecture
+
+```text
+Browser
+  |
+  | React app, JWT stored locally
+  v
+FastAPI backend
+  |
+  | SQLAlchemy ORM
+  v
+SQLite database
+
+FastAPI backend
+  |
+  | Structured training summary
+  v
+OpenAI Responses API
+```
+
+The frontend calls the backend with bearer-token authentication. The backend owns authentication, validation, persistence, PR calculations, upload handling, and AI coaching summary generation.
 
 ## Project Structure
 
@@ -50,7 +76,9 @@ Gymmy/
     models.py
     schemas.py
     auth.py
+    seed_demo.py
     requirements.txt
+    Dockerfile
     .env.example
     routes/
       users.py
@@ -58,9 +86,11 @@ Gymmy/
       templates.py
       bodyweight.py
       progress_photos.py
+      coach.py
     tests/
       conftest.py
       test_auth.py
+      test_coach.py
       test_health.py
       test_other_routes.py
       test_workouts.py
@@ -70,16 +100,21 @@ Gymmy/
     index.html
     package.json
     vite.config.js
+    Dockerfile
+    nginx.conf
     .env.example
     src/
       App.jsx
       api.js
       main.jsx
       styles.css
+  docs/
+    screenshots/
+  docker-compose.yml
   README.md
 ```
 
-`backend/uploads/`, local databases, virtual environments, and `.env` files are intentionally ignored by Git.
+`backend/uploads/`, local databases, virtual environments, `node_modules/`, build output, and `.env` files are intentionally ignored by Git.
 
 ## Backend Setup
 
@@ -134,17 +169,17 @@ Windows PowerShell:
 Copy-Item .env.example .env
 ```
 
-Then update `.env` as needed:
+Then update `.env`:
 
 ```env
-SECRET_KEY=change-me
+SECRET_KEY=replace-with-a-long-random-secret
 DATABASE_URL=sqlite:///./gymmy.db
 ACCESS_TOKEN_EXPIRE_MINUTES=10080
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5-mini
 ```
 
-For local development, the default SQLite database is enough. The coaching endpoint works after `OPENAI_API_KEY` is set.
+`SECRET_KEY` signs JWT login tokens. `OPENAI_API_KEY` is only needed for live AI Coach responses.
 
 ## Run The API
 
@@ -180,28 +215,6 @@ Expected response:
   "app": "Gymmy API"
 }
 ```
-
-## Run Tests
-
-From the `backend/` folder:
-
-```bash
-pytest
-```
-
-If `pytest` is not on your PATH, run it through the virtual environment:
-
-```powershell
-venv\Scripts\python.exe -m pytest
-```
-
-Current backend result:
-
-```text
-19 passed
-```
-
-Tests use `sqlite:///./test_gymmy.db` and reset the database between tests.
 
 ## Frontend Setup
 
@@ -247,12 +260,82 @@ The frontend will run at:
 http://127.0.0.1:5173
 ```
 
-The FastAPI backend should be running at `http://127.0.0.1:8000`.
-
 Build the frontend:
 
 ```bash
 npm run build
+```
+
+## Demo Data
+
+Seed a demo account from the `backend/` folder:
+
+```bash
+python seed_demo.py
+```
+
+Demo login:
+
+```text
+Username: demo
+Password: password123
+```
+
+The seed script recreates only the demo user, then adds workouts, sets, templates, bodyweight logs, and a sample progress photo URL.
+
+## Run Tests
+
+From the `backend/` folder:
+
+```bash
+pytest
+```
+
+If `pytest` is not on your PATH, run it through the virtual environment:
+
+```powershell
+venv\Scripts\python.exe -m pytest
+```
+
+Current backend result:
+
+```text
+20 passed
+```
+
+Tests use `sqlite:///./test_gymmy.db` and reset the database between tests. AI Coach tests mock the OpenAI call so the test suite does not spend credits.
+
+## Docker
+
+Run the full app with Docker Compose from the repo root:
+
+```bash
+docker compose up --build
+```
+
+Frontend:
+
+```text
+http://localhost:5173
+```
+
+Backend:
+
+```text
+http://localhost:8000
+```
+
+Docker Compose uses named volumes for SQLite data and uploaded files:
+
+- `gymmy_data`
+- `gymmy_uploads`
+
+Set these environment variables in your shell or a root-level `.env` file before running Compose if you want AI Coach enabled in Docker:
+
+```env
+SECRET_KEY=replace-with-a-long-random-secret
+OPENAI_API_KEY=your-openai-key
+OPENAI_MODEL=gpt-5-mini
 ```
 
 ## API Overview
@@ -304,46 +387,86 @@ npm run build
 | `DELETE` | `/progress-photos/{photo_id}` | Delete one progress photo row |
 | `GET` | `/uploads/progress_photos/{filename}` | Serve an uploaded progress photo |
 
-Upload behavior:
-
-- Accepts `multipart/form-data`
-- Requires a `file` field
-- Accepts optional `notes`
-- Saves files under `backend/uploads/progress_photos/`
-- Returns a `photo_url` such as `/uploads/progress_photos/example-file.jpg`
-- Rejects non-image files and unsupported image types
-
 ### Coach
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
-| `POST` | `/coach/` | Generate AI coaching advice from workout, PR, bodyweight, training frequency, and progress-photo metadata |
+| `POST` | `/coach/` | Return one short AI coaching answer |
 
-Coach behavior:
+## AI Coach
 
-- Requires `OPENAI_API_KEY` in `backend/.env`
-- Uses `OPENAI_MODEL`, defaulting to `gpt-5-mini`
-- Sends a structured training summary to OpenAI
-- Answers personal training questions with Gymmy data when relevant
-- Answers general lifting questions directly from training principles
-- Returns one short direct answer
-- Tests mock the OpenAI call so the test suite does not spend credits
+Gymmy does not send raw database files to OpenAI. The backend builds a structured summary with:
+
+- Recent workouts
+- Exercise sets
+- Best PR estimates
+- Bodyweight trend
+- Training frequency
+- Simple recovery signals
+- Progress-photo count and notes metadata
+
+Coach answers personal questions with Gymmy data when relevant, and answers general lifting questions from training principles. Responses are intentionally short and direct.
+
+Example:
+
+```text
+Question: What is my estimated PR based on Bench Press?
+Answer: Your current best estimated 1RM is 210, based on 150 x 12. Treat that as a rough estimate because high-rep calculations are less precise.
+```
+
+## Screenshots
+
+### Dashboard
+
+![Gymmy dashboard](docs/screenshots/dashboard.png)
+
+### Workout History
+
+![Gymmy workout history](docs/screenshots/workout-history.png)
+
+### Bodyweight
+
+![Gymmy bodyweight chart](docs/screenshots/bodyweight.png)
+
+## Deployment Notes
+
+Recommended free testing setup:
+
+- Frontend: Vercel or Netlify
+- Backend: Render
+
+Frontend settings:
+
+- Root directory: `frontend`
+- Build command: `npm run build`
+- Output directory: `dist`
+- Environment variable: `VITE_API_URL=https://your-backend-url`
+
+Backend settings:
+
+- Root directory: `backend`
+- Build command: `pip install -r requirements.txt`
+- Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- Environment variables:
+  - `SECRET_KEY`
+  - `DATABASE_URL`
+  - `ACCESS_TOKEN_EXPIRE_MINUTES`
+  - `OPENAI_API_KEY`
+  - `OPENAI_MODEL`
+
+For a public deployment, add the deployed frontend origin to the backend CORS allowlist in `backend/main.py`.
+
+SQLite and local uploaded files are fine for local demos and early portfolio testing. For production, move to a hosted database and object storage, such as Postgres plus S3, Cloudinary, or Supabase Storage.
 
 ## Status
 
-Gymmy is currently in backend MVP development. The backend API is functional and tested. The next major step is building the React frontend so Gymmy can be used from the browser instead of Swagger.
+Gymmy is a working full-stack MVP with a tested FastAPI backend, React frontend, progress photo uploads, PR estimates, bodyweight tracking, templates, and AI Coach.
 
 ## Roadmap
 
-- Build React frontend
-- Add dashboard page
-- Add workout logging interface
-- Add workout history and detail pages
-- Add template management
-- Add bodyweight progress charts
-- Add progress photo timeline
-- Expand OpenAI-powered coaching assistant
-- Add seed/demo data
-- Add screenshots
-- Add Docker support
-- Add deployment notes
+- Add edit forms for workouts and bodyweight logs
+- Add frontend test coverage
+- Add production database support
+- Move uploads to object storage
+- Add screenshot assets
+- Add hosted deployment
