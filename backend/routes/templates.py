@@ -6,6 +6,30 @@ import models, schemas, auth
 
 router = APIRouter(prefix="/templates", tags=["templates"])
 
+
+def add_template_exercises(
+    db: Session,
+    template_id: int,
+    exercises: List[schemas.TemplateExerciseCreate],
+):
+    for exercise in exercises:
+        new_exercise = models.TemplateExercise(
+            name=exercise.name,
+            template_id=template_id
+        )
+        db.add(new_exercise)
+        db.flush()
+
+        for set_data in exercise.sets:
+            new_set = models.TemplateSet(
+                reps=set_data.reps,
+                weight=set_data.weight,
+                set_number=set_data.set_number,
+                template_exercise_id=new_exercise.id,
+            )
+            db.add(new_set)
+
+
 @router.post("/", response_model=schemas.TemplateOut)
 def create_template(
     template: schemas.TemplateCreate,
@@ -19,12 +43,7 @@ def create_template(
     db.add(new_template)
     db.flush()
 
-    for exercise in template.exercises:
-        new_exercise = models.TemplateExercise(
-            name=exercise.name,
-            template_id=new_template.id
-        )
-        db.add(new_exercise)
+    add_template_exercises(db, new_template.id, template.exercises)
 
     db.commit()
     db.refresh(new_template)
@@ -68,16 +87,11 @@ def update_template(
         raise HTTPException(status_code=404, detail="Template not found")
 
     db_template.name = template.name
-    db.query(models.TemplateExercise).filter(
-        models.TemplateExercise.template_id == template_id
-    ).delete()
+    for exercise in list(db_template.exercises):
+        db.delete(exercise)
+    db.flush()
 
-    for exercise in template.exercises:
-        new_exercise = models.TemplateExercise(
-            name=exercise.name,
-            template_id=template_id
-        )
-        db.add(new_exercise)
+    add_template_exercises(db, template_id, template.exercises)
 
     db.commit()
     db.refresh(db_template)

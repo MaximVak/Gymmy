@@ -168,6 +168,7 @@ label {
 }
 
 input,
+select,
 textarea {
   width: 100%;
   min-height: 43px;
@@ -187,17 +188,31 @@ textarea::placeholder {
   color: #7d8791;
 }
 
+select {
+  appearance: none;
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  accent-color: var(--green);
+  padding: 0;
+}
+
 textarea {
   min-height: 108px;
   resize: vertical;
 }
 
 input:hover,
+select:hover,
 textarea:hover {
   border-color: var(--line-strong);
 }
 
 input:focus,
+select:focus,
 textarea:focus {
   border-color: var(--green);
   box-shadow: 0 0 0 3px rgba(159, 216, 255, 0.18);
@@ -327,7 +342,7 @@ textarea:focus {
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: 280px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -367,7 +382,7 @@ textarea:focus {
 
 .nav-list {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .nav-list button,
@@ -380,7 +395,7 @@ textarea:focus {
   border: 1px solid transparent;
   background: transparent;
   color: var(--muted);
-  padding: 11px 12px;
+  padding: 12px 13px;
   text-align: left;
 }
 
@@ -392,8 +407,9 @@ textarea:focus {
 }
 
 .nav-list button {
-  min-height: 44px;
+  min-height: 55px;
   border-radius: 8px;
+  font-size: 1.15rem;
   font-weight: 850;
 }
 
@@ -690,6 +706,12 @@ textarea:focus {
   gap: 14px;
 }
 
+.form-grid.three {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .exercise-builder {
   display: grid;
   gap: 14px;
@@ -733,12 +755,25 @@ textarea:focus {
 }
 
 .detail-header {
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--line);
 }
 
+.detail-header h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-header .detail-date {
+  justify-self: center;
+}
+
 .detail-header strong {
+  justify-self: end;
   color: var(--green-dark);
 }
 
@@ -760,6 +795,153 @@ textarea:focus {
 .inline-field {
   display: flex;
   gap: 8px;
+}
+
+.template-exercise-list {
+  display: grid;
+  gap: 12px;
+}
+
+.template-exercise-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-alt);
+  padding: 12px;
+}
+
+.template-set-list {
+  display: grid;
+  gap: 8px;
+}
+
+.template-set-row {
+  display: grid;
+  grid-template-columns: 44px minmax(80px, 1fr) minmax(96px, 1fr) 42px;
+  align-items: center;
+  gap: 8px;
+}
+
+.template-set-header {
+  min-height: 24px;
+  color: var(--subtle);
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.template-set-row strong {
+  color: var(--ink);
+}
+
+.template-title-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.template-title-row strong {
+  min-width: 0;
+}
+
+.template-title-row .text-button {
+  flex: 0 0 auto;
+}
+
+.list-row .template-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
+}
+
+.template-session-modal {
+  width: min(1040px, 100%);
+}
+
+.template-session-modal .coach-modal-header span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.template-session-form {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 14px;
+}
+
+.template-session-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+}
+
+.session-progress {
+  min-width: 128px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-alt);
+  padding: 10px 12px;
+}
+
+.session-progress strong {
+  color: var(--green-dark);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.session-progress span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.template-session-body {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(17, 18, 20, 0.55);
+  padding: 12px;
+}
+
+.template-session-set-list {
+  display: grid;
+  gap: 8px;
+}
+
+.template-session-set-row {
+  display: grid;
+  grid-template-columns: 92px 42px minmax(80px, 1fr) minmax(96px, 1fr) 42px;
+  align-items: center;
+  gap: 8px;
+}
+
+.template-session-set-row strong {
+  color: var(--ink);
+}
+
+.session-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 850;
 }
 
 .chart {
@@ -981,9 +1163,10 @@ textarea:focus {
 
 .nutrition-pie-wrap {
   display: grid;
-  grid-template-columns: 132px minmax(0, 1fr);
+  grid-template-columns: 132px auto;
   align-items: center;
-  gap: 18px;
+  justify-content: center;
+  gap: 12px;
   margin-top: 18px;
 }
 
@@ -1131,6 +1314,80 @@ textarea:focus {
   flex: 0 0 auto;
 }
 
+.nutrition-goals-panel,
+.nutrition-goals-collapsed,
+.profile-panel,
+.profile-collapsed {
+  margin-bottom: 16px;
+}
+
+.nutrition-goals-heading.is-clickable,
+.profile-heading.is-clickable {
+  cursor: pointer;
+}
+
+.nutrition-goals-heading.is-clickable:hover h2,
+.nutrition-goals-heading.is-clickable:focus-visible h2,
+.profile-heading.is-clickable:hover h2,
+.profile-heading.is-clickable:focus-visible h2 {
+  color: var(--green-dark);
+}
+
+.nutrition-entries-panel {
+  margin-top: 16px !important;
+}
+
+.nutrition-layout,
+.bodyweight-layout,
+.photos-upload-panel {
+  margin-bottom: 16px;
+}
+
+.bodyweight-logs-panel,
+.photos-timeline-panel {
+  margin-top: 16px;
+}
+
+.nutrition-goals-collapsed,
+.profile-collapsed {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  padding: 12px 14px;
+  text-align: left;
+  box-shadow: var(--shadow-sm);
+}
+
+.nutrition-goals-collapsed:hover,
+.profile-collapsed:hover {
+  border-color: rgba(159, 216, 255, 0.46);
+  background: var(--surface-alt);
+}
+
+.nutrition-goals-collapsed strong,
+.profile-collapsed strong {
+  flex: 0 0 auto;
+  color: var(--ink);
+}
+
+.nutrition-goals-collapsed span,
+.profile-collapsed span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .summary-card {
   display: grid;
   gap: 8px;
@@ -1167,7 +1424,7 @@ textarea:focus {
 
 @media (max-width: 1040px) {
   .app-shell {
-    grid-template-columns: 230px minmax(0, 1fr);
+    grid-template-columns: 245px minmax(0, 1fr);
   }
 
   .main-content {
@@ -1180,7 +1437,8 @@ textarea:focus {
   .two-column,
   .two-column.wide-left,
   .history-layout,
-  .form-grid.two {
+  .form-grid.two,
+  .form-grid.three {
     grid-template-columns: 1fr;
   }
 
@@ -1239,10 +1497,10 @@ textarea:focus {
   .nav-list button {
     width: 100%;
     min-width: 0;
-    min-height: 39px;
+    min-height: 48px;
     justify-content: center;
     padding: 9px 12px;
-    font-size: 0.92rem;
+    font-size: 1.05rem;
     box-shadow: none;
   }
 
@@ -1286,6 +1544,18 @@ textarea:focus {
   .set-row {
     grid-template-columns: 42px minmax(70px, 1fr) minmax(86px, 1fr) 38px;
   }
+
+  .template-set-row {
+    grid-template-columns: 36px minmax(64px, 1fr) minmax(76px, 1fr) 38px;
+  }
+
+  .template-session-top {
+    grid-template-columns: 1fr;
+  }
+
+  .template-session-set-row {
+    grid-template-columns: 78px 34px minmax(62px, 1fr) minmax(72px, 1fr) 38px;
+  }
 }
 
 @media (max-width: 520px) {
@@ -1314,14 +1584,25 @@ textarea:focus {
 
   .builder-heading,
   .builder-actions,
-  .detail-header,
   .coach-disclaimer,
-  .nutrition-goals-actions {
+  .nutrition-goals-actions,
+  .nutrition-goals-collapsed,
+  .profile-collapsed {
     align-items: stretch;
     flex-direction: column;
   }
 
+  .nutrition-goals-collapsed span,
+  .profile-collapsed span {
+    white-space: normal;
+  }
+
   .inline-field {
     align-items: stretch;
+  }
+
+  .template-row-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }

@@ -75,13 +75,27 @@ class WorkoutOut(BaseModel):
 
 
 # Template schemas
+class TemplateSetCreate(BaseModel):
+    reps: int = Field(..., ge=1, le=100)
+    weight: float = Field(..., ge=0)
+    set_number: int = Field(..., ge=1)
+
+
+class TemplateSetOut(TemplateSetCreate):
+    id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TemplateExerciseCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
+    sets: List[TemplateSetCreate] = []
 
 
 class TemplateExerciseOut(BaseModel):
     id: int
     name: str
+    sets: List[TemplateSetOut] = []
 
     model_config = ConfigDict(from_attributes=True)
 

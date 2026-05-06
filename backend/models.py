@@ -108,6 +108,7 @@ class Template(Base):
         "TemplateExercise",
         back_populates="template",
         cascade="all, delete-orphan",
+        order_by="TemplateExercise.id",
     )
 
 
@@ -119,6 +120,27 @@ class TemplateExercise(Base):
     template_id = Column(Integer, ForeignKey("templates.id", ondelete="CASCADE"))
 
     template = relationship("Template", back_populates="exercises")
+    sets = relationship(
+        "TemplateSet",
+        back_populates="template_exercise",
+        cascade="all, delete-orphan",
+        order_by="TemplateSet.set_number",
+    )
+
+
+class TemplateSet(Base):
+    __tablename__ = "template_sets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reps = Column(Integer)
+    weight = Column(Float)
+    set_number = Column(Integer)
+    template_exercise_id = Column(
+        Integer,
+        ForeignKey("template_exercises.id", ondelete="CASCADE"),
+    )
+
+    template_exercise = relationship("TemplateExercise", back_populates="sets")
 
 
 class BodyweightLog(Base):

@@ -36,8 +36,19 @@ def test_create_and_get_templates():
         json={
             "name": "Push Template",
             "exercises": [
-                {"name": "Bench Press"},
-                {"name": "Overhead Press"},
+                {
+                    "name": "Bench Press",
+                    "sets": [
+                        {"set_number": 1, "reps": 8, "weight": 185},
+                        {"set_number": 2, "reps": 6, "weight": 195},
+                    ],
+                },
+                {
+                    "name": "Overhead Press",
+                    "sets": [
+                        {"set_number": 1, "reps": 10, "weight": 95},
+                    ],
+                },
             ],
         },
     )
@@ -48,6 +59,8 @@ def test_create_and_get_templates():
     assert created["name"] == "Push Template"
     assert len(created["exercises"]) == 2
     assert created["exercises"][0]["name"] == "Bench Press"
+    assert created["exercises"][0]["sets"][0]["reps"] == 8
+    assert created["exercises"][0]["sets"][0]["weight"] == 185
 
     get_response = client.get("/templates/", headers=headers)
 
@@ -56,6 +69,33 @@ def test_create_and_get_templates():
     templates = get_response.json()
     assert len(templates) == 1
     assert templates[0]["name"] == "Push Template"
+    assert templates[0]["exercises"][1]["sets"][0]["weight"] == 95
+
+    update_response = client.put(
+        f"/templates/{created['id']}",
+        headers=headers,
+        json={
+            "name": "Heavy Push Template",
+            "exercises": [
+                {
+                    "name": "Incline Dumbbell Press",
+                    "sets": [
+                        {"set_number": 1, "reps": 10, "weight": 80},
+                        {"set_number": 2, "reps": 8, "weight": 85},
+                    ],
+                },
+            ],
+        },
+    )
+
+    assert update_response.status_code == 200
+
+    updated = update_response.json()
+    assert updated["name"] == "Heavy Push Template"
+    assert len(updated["exercises"]) == 1
+    assert updated["exercises"][0]["name"] == "Incline Dumbbell Press"
+    assert updated["exercises"][0]["sets"][1]["reps"] == 8
+    assert updated["exercises"][0]["sets"][1]["weight"] == 85
 
 
 def test_template_validation_error():
